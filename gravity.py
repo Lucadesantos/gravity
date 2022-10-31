@@ -23,8 +23,8 @@ CENTER = [SIZE[0]/2, SIZE[1]/2]
 LIMIT = (10000,10000)
 SCALE = 1
 NEW_PARTICLE_MASS = 10000
-BH_MASS = 200000
-G = 0.3
+BH_MASS = 1000000
+G = 0.2
 K = 100
 toggleVect = False
 
@@ -68,14 +68,22 @@ def drawVector(DISPLAY, universe, particle, vect, color, scale):
 class Universe:
 	particles = []
 	center = []
-	def __init__(self, particles, center):
-		self.particles = particles
+	def __init__(self,center):
 		self.center = center
 
 	def save(self, fileName):
 		with open("saves/" + fileName + ".unv", "wb") as f:
 			pickle.dump(self, f)
 			print(self.center)
+
+	def fill(self, n,m):
+		for i in range(n):
+			x = random.randint(-CENTER[0],CENTER[0])
+			y = random.randint(-CENTER[1],CENTER[1])
+			mass = random.randint(10, m)
+			velX = random.randint(-10, 10)/100
+			velY = random.randint(-10, 10)/100
+			self.particles.append(Particle(mass, (x,y), (velX, velY)))
 
 	def update(self, DISPLAY):
 		global toggleVect
@@ -167,21 +175,16 @@ class Particle:
 	def move(self):
 		self.pos = addVector(self.pos, self.vel)
 		self.heat *= 0.99999
+
+		
 def start(n, m):
 	pygame.init()
 	DISPLAY=pygame.display.set_mode(SIZE,0,32)
 
 	DISPLAY.fill(BLACK)
-	particles = []
-	universe = 0
-	for i in range(n):
-		x = random.randint(-CENTER[0],CENTER[0])
-		y = random.randint(-CENTER[1],CENTER[1])
-		mass = random.randint(10, m)
-		velX = random.randint(-10, 10)/100
-		velY = random.randint(-10, 10)/100
-		particles.append(Particle(mass, (x,y), (velX, velY)))
-	universe = Universe(particles, CENTER)
+	
+	universe = Universe(CENTER)
+	universe.fill(n, m)
 	return DISPLAY, universe
 
 
@@ -263,7 +266,9 @@ def main(DISPLAY, universe):
 					input_active = True
 				if event.key == pygame.K_f:
 					fast = not fast
-				
+				if event.key == pygame.K_x:
+					universe.fill(100,3000)
+
 		if keys[pygame.K_LEFT]:
 			universe.center[0] += int(5/SCALE)
 		if keys[pygame.K_RIGHT]:
