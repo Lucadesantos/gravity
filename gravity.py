@@ -172,7 +172,8 @@ def main(DISPLAY, universe):
 	global toggleVect, SCALE
 	pause = False
 	pygame.font.init()
-	font = pygame.font.Font(pygame.font.get_default_font(), 15)
+	font = pygame.font.Font("res/font.otf", 15)
+	font2 = pygame.font.Font("res/font.otf", 25)
 	
 	dragging = False
 	text = ""
@@ -182,16 +183,21 @@ def main(DISPLAY, universe):
 		DISPLAY.fill(BLACK)
 		numParticles = len(universe.particles)
 		speed = numParticles**(1/10)*0.001/50**(1/10)
-		text_surface = font.render("FPS: " + str(1//speed), False, WHITE)
+		
+		text_surface = font.render("TPS: " + str(1//speed), False, WHITE)
 		text_surface2 = font.render(str(universe.center) + " / " + str(round(SCALE,1)), False, WHITE)
 		
-		text_surface3 = font.render("File name: " + text, False, WHITE)
+		text_surface3 = font2.render("New save name: " + text, False, WHITE)
+		text_surface4 = font2.render("PAUSED", False, WHITE)
 		
-		DISPLAY.blit(text_surface, (0,0))
-		DISPLAY.blit(text_surface2, (0,20))
+		if pause or input_active:
+			DISPLAY.blit(text_surface4, (SIZE[0]/2-60,5))
+
+		DISPLAY.blit(text_surface, (5,0))
+		DISPLAY.blit(text_surface2, (5,20))
 		
 		if input_active:
-			DISPLAY.blit(text_surface3, (0,40))
+			DISPLAY.blit(text_surface3, (5,SIZE[1]-30))
 		keys = pygame.key.get_pressed()
 		if dragging:
 			pos = multVector(pygame.mouse.get_pos(), (1/SCALE,1/SCALE))
@@ -225,8 +231,9 @@ def main(DISPLAY, universe):
 				if input_active:
 					if event.key == pygame.K_RETURN:
 						input_active = False
-						universe.save(text)
-						text = ""
+						if text != "":
+							universe.save(text)
+							text = ""
 					elif event.key == pygame.K_BACKSPACE:
 						if text == "":
 							input_active = False
@@ -256,7 +263,7 @@ def main(DISPLAY, universe):
 			if toggleVect:
 				drawVector(DISPLAY, universe, particle, particle.vel, (0,255,0), 100)
 			
-		if not pause:
+		if not (pause or input_active):
 			universe.update(DISPLAY)
 		pygame.display.update()
 
