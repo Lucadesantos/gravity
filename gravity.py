@@ -5,7 +5,16 @@ import sys
 import math
 import random
 import pickle 
+from colour import Color
 
+red = Color("red")
+yellow = Color("yellow")
+white = Color("white")
+gray = Color("gray")
+colors = []
+colors += list(gray.range_to(red,100))
+colors += list(red.range_to(yellow,1000))
+colors += list(yellow.range_to(white,3000))
 # Constants
 WHITE = (255,255,255)
 BLACK = (0,0,0)
@@ -13,9 +22,10 @@ SIZE  = (1200,600)
 CENTER = [SIZE[0]/2, SIZE[1]/2]
 LIMIT = (10000,10000)
 SCALE = 1
-
-G = 0.2
-
+NEW_PARTICLE_MASS = 10000
+BH_MASS = 200000
+G = 0.3
+K = 100
 toggleVect = False
 
 
@@ -109,8 +119,8 @@ class Universe:
 		
 		newPart = p1 if p1.mass > p2.mass else p2
 		oldPart = p2 if p1.mass > p2.mass else p1
-		
-		newPart.update(newMass, vel)
+		energy = (size(p1.vel) + size(p2.vel))*(newMass)
+		newPart.update(newMass, vel, energy)
 	
 		try:
 			self.particles.remove(oldPart)
@@ -136,20 +146,27 @@ class Particle:
 	vel = ()
 	mass = 0
 	radius = 0
+	heat = 0
+
 	def __init__(self, m, pos, vel):
 		self.mass = m
 		self.pos=pos
 		self.vel = vel
 		self.radius = round((self.mass/math.pi),2)**(1/3)
+		self.heat = 0
 
-	def update(self, m, vel):
+	def update(self, m, vel, energy):
+		if self.heat >=0:
+			self.heat = self.heat + K*(m - self.mass)*(energy/K**2.5)
 		self.mass = m
 		self.vel = vel
 		self.radius = round((self.mass/math.pi),2)**(1/3)
+		if self.mass>BH_MASS:
+			self.heat = -1
 
 	def move(self):
 		self.pos = addVector(self.pos, self.vel)
-
+		self.heat *= 0.99999
 def start(n, m):
 	pygame.init()
 	DISPLAY=pygame.display.set_mode(SIZE,0,32)
@@ -176,6 +193,7 @@ def main(DISPLAY, universe):
 	font2 = pygame.font.Font("res/font.otf", 25)
 	
 	dragging = False
+	fast = False
 	text = ""
 	input_active = False
 	while True:
@@ -204,7 +222,8 @@ def main(DISPLAY, universe):
 			within.pos = subVector(pos, universe.center)
 
 
-		time.sleep(speed)
+		if not fast:
+			time.sleep(speed)
 		for event in pygame.event.get():
 			if event.type==QUIT:
 				pygame.quit()
@@ -222,7 +241,7 @@ def main(DISPLAY, universe):
 					within.vel = divVector(vel, (100,100))
 				else:
 					vel = subVector(pos2, pos1)
-					universe.addParticle(Particle(100000,subVector(pos1, universe.center),multVector(vel, (0.01,0.01))))
+					universe.addParticle(Particle(NEW_PARTICLE_MASS,subVector(pos1, universe.center),multVector(vel, (0.01,0.01))))
 			if event.type == pygame.KEYDOWN:
 				if event.key == pygame.K_v:
 					toggleVect = not toggleVect
@@ -242,6 +261,8 @@ def main(DISPLAY, universe):
 						text += event.unicode
 				if event.key == pygame.K_s:
 					input_active = True
+				if event.key == pygame.K_f:
+					fast = not fast
 				
 		if keys[pygame.K_LEFT]:
 			universe.center[0] += int(5/SCALE)
@@ -259,7 +280,19 @@ def main(DISPLAY, universe):
 			centeredPos = addVector(particle.pos, universe.center)
 			centeredPos = multVector(centeredPos, (SCALE, SCALE))
 			
-			pygame.draw.circle(DISPLAY,WHITE,centeredPos,particle.radius*SCALE)
+	
+			pos = (particle.heat)//(K**2)
+			if pos>=len(colors):
+				pos = len(colors)-1
+			heat = colors[int(pos)].rgb
+			heat = (255*heat[0],255*heat[1],255*heat[2])
+			w=0
+			if particle.mass > BH_MASS:
+				heat = (50,50,50)
+				pygame.draw.circle(DISPLAY,(255,255,255),centeredPos,particle.radius*SCALE, 2)	
+				pygame.draw.circle(DISPLAY,heat,centeredPos,(particle.radius**0.5)*SCALE)
+			else:
+				pygame.draw.circle(DISPLAY,heat,centeredPos,particle.radius*SCALE)
 			if toggleVect:
 				drawVector(DISPLAY, universe, particle, particle.vel, (0,255,0), 100)
 			
