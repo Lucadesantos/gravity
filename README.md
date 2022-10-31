@@ -8,6 +8,7 @@ Multybody gravitational forces simulator in python
 
 # In engine usage
 - Press the direction keys to move the view
+- Press B or N to zoom out / in
 - Press SPACE to pause the simulation
 - Press V to show force vectors
 - Press S to save the simulation
