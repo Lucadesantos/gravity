@@ -6,6 +6,7 @@ import math
 import random
 import pickle 
 from colour import Color
+import time
 
 red = Color("red")
 yellow = Color("yellow")
@@ -20,11 +21,14 @@ WHITE = (255,255,255)
 BLACK = (0,0,0)
 SIZE  = (1200,600)
 CENTER = [SIZE[0]/2, SIZE[1]/2]
+CENTER_CONST = [SIZE[0]/2, SIZE[1]/2]
+
 LIMIT = (10000,10000)
 SCALE = 1
+MAX_DISTANCE = 5000
 NEW_PARTICLE_MASS = 10000
-BH_MASS = 1000000
-G = 0.2
+BH_MASS = 500000
+G = 0.4
 K = 100
 toggleVect = False
 
@@ -58,11 +62,12 @@ def size(v):
 
 def drawVector(DISPLAY, universe, particle, vect, color, scale):
 	global SCALE
-	centeredPos = addVector(particle.pos, universe.center)
+	centeredPos = addVector(particle.pos, multVector(universe.center,(1/SCALE,1/SCALE)))
+	centeredPos = multVector(centeredPos, (SCALE, SCALE))
 	vstart = centeredPos
 	vend = addVector(centeredPos, multVector(vect, (scale, scale)))
 
-	pygame.draw.line(DISPLAY, color, multVector(vstart, (SCALE,SCALE)), multVector(vend,(SCALE,SCALE)), 1)
+	pygame.draw.line(DISPLAY, color, vstart, vend, 1)
 
 
 class Universe:
@@ -77,9 +82,14 @@ class Universe:
 			print(self.center)
 
 	def fill(self, n,m):
+		view_center = divVector(subVector(CENTER_CONST, self.center), (SCALE,SCALE))
+		print(view_center)
 		for i in range(n):
-			x = random.randint(-CENTER[0],CENTER[0])
-			y = random.randint(-CENTER[1],CENTER[1])
+			print(view_center)
+			print(int(view_center[0]-CENTER_CONST[0]),int(view_center[0]+CENTER_CONST[0]))
+			print(int(view_center[1]-CENTER_CONST[1]),int(view_center[1]+CENTER_CONST[1]))
+			x = random.randint(int(-CENTER_CONST[0]//SCALE),int(CENTER_CONST[0]//SCALE))
+			y = random.randint(int(-CENTER_CONST[1]//SCALE),int(CENTER_CONST[1]//SCALE))
 			mass = random.randint(10, m)
 			velX = random.randint(-10, 10)/100
 			velY = random.randint(-10, 10)/100
@@ -92,6 +102,8 @@ class Universe:
 			for particle2 in self.particles:
 				if particle2 != particle1:
 					distance = dist(particle1.pos, particle2.pos)
+					if distance > MAX_DISTANCE:
+						break
 					if distance <= particle1.radius+particle2.radius:
 						self.mergeParticles(particle1, particle2)
 						break
@@ -107,7 +119,7 @@ class Universe:
 			for vector in vectors:
 				normVect = divVector(vector, (particle1.mass**2, particle1.mass**2))				
 				if toggleVect:
-					drawVector(DISPLAY, self, particle1, normVect, (255,0,0), 10000)
+					drawVector(DISPLAY, self, particle1, normVect, (255,0,0), 5000)
 				newVector = addVector(newVector, normVect)
 			particle1.vel = addVector(particle1.vel, newVector)
 			particle1.move()
@@ -165,7 +177,7 @@ class Particle:
 
 	def update(self, m, vel, energy):
 		if self.heat >=0:
-			self.heat = self.heat + K*(m - self.mass)*(energy/K**2.5)
+			self.heat = self.heat + K*(m - self.mass)+(energy/K)
 		self.mass = m
 		self.vel = vel
 		self.radius = round((self.mass/math.pi),2)**(1/3)
@@ -199,14 +211,19 @@ def main(DISPLAY, universe):
 	fast = False
 	text = ""
 	input_active = False
+	oldTime = time.time() * 1000
 	while True:
 
 		DISPLAY.fill(BLACK)
 		numParticles = len(universe.particles)
 		speed = numParticles**(1/10)*0.001/50**(1/10)
 		
-		text_surface = font.render("TPS: " + str(1//speed), False, WHITE)
-		text_surface2 = font.render(str(universe.center) + " / " + str(round(SCALE,1)), False, WHITE)
+		newTime = time.time() * 1000
+		timeDelta = newTime-oldTime
+		oldTime = newTime
+		view_center = divVector(subVector(CENTER_CONST, universe.center), (SCALE,SCALE))
+		text_surface = font.render("TPS: " + str(round(100/timeDelta,1)), False, WHITE)
+		text_surface2 = font.render("(" + str(int(view_center[0])) + ":" + str(int(view_center[1])) + ") / " + str(round(SCALE,1)), False, WHITE)
 		
 		text_surface3 = font2.render("New save name: " + text, False, WHITE)
 		text_surface4 = font2.render("PAUSED", False, WHITE)
@@ -232,19 +249,20 @@ def main(DISPLAY, universe):
 				pygame.quit()
 				sys.exit()
 			if event.type == pygame.MOUSEBUTTONDOWN:
-				pos1 = multVector(pygame.mouse.get_pos(), (1/SCALE,1/SCALE))
+				pos1 = pygame.mouse.get_pos()
 				within = universe.isIn(subVector(pos1, universe.center))
-				if within:
+				if within and 0:
 					dragging = True
 			if event.type == pygame.MOUSEBUTTONUP:
-				pos2 = multVector(pygame.mouse.get_pos(), (1/SCALE,1/SCALE))
-				if dragging:
+				pos2 = pygame.mouse.get_pos()
+				if dragging and 0:
 					dragging = False
 					vel = subVector(pos2, pos1)
 					within.vel = divVector(vel, (100,100))
 				else:
 					vel = subVector(pos2, pos1)
-					universe.addParticle(Particle(NEW_PARTICLE_MASS,subVector(pos1, universe.center),multVector(vel, (0.01,0.01))))
+					newPos = subVector(view_center,multVector(subVector(CENTER_CONST,pos1),(1/SCALE,1/SCALE)))
+					universe.addParticle(Particle(NEW_PARTICLE_MASS,newPos,multVector(vel, (0.01,0.01))))
 			if event.type == pygame.KEYDOWN:
 				if event.key == pygame.K_v:
 					toggleVect = not toggleVect
@@ -267,22 +285,22 @@ def main(DISPLAY, universe):
 				if event.key == pygame.K_f:
 					fast = not fast
 				if event.key == pygame.K_x:
-					universe.fill(100,3000)
+					universe.fill(10,10000)
 
 		if keys[pygame.K_LEFT]:
-			universe.center[0] += int(5/SCALE)
+			universe.center[0] += int(2/SCALE)
 		if keys[pygame.K_RIGHT]:
-			universe.center[0] -= int(5/SCALE)
+			universe.center[0] -= int(2/SCALE)
 		if keys[pygame.K_UP]:
-			universe.center[1] += int(5/SCALE)
+			universe.center[1] += int(2/SCALE)
 		if keys[pygame.K_DOWN]:
-			universe.center[1] -= int(5/SCALE)
+			universe.center[1] -= int(2/SCALE)
 		if keys[pygame.K_b]:
 			SCALE -= 0.001
 		if keys[pygame.K_n]:
 			SCALE += 0.001
 		for particle in universe.getParticles():
-			centeredPos = addVector(particle.pos, universe.center)
+			centeredPos = addVector(particle.pos, multVector(universe.center,(1/SCALE,1/SCALE)))
 			centeredPos = multVector(centeredPos, (SCALE, SCALE))
 			
 	
@@ -299,7 +317,7 @@ def main(DISPLAY, universe):
 			else:
 				pygame.draw.circle(DISPLAY,heat,centeredPos,particle.radius*SCALE)
 			if toggleVect:
-				drawVector(DISPLAY, universe, particle, particle.vel, (0,255,0), 100)
+				drawVector(DISPLAY, universe, particle, particle.vel, (0,255,0), 50)
 			
 		if not (pause or input_active):
 			universe.update(DISPLAY)
