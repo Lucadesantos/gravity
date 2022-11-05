@@ -79,15 +79,10 @@ class Universe:
 	def save(self, fileName):
 		with open("saves/" + fileName + ".unv", "wb") as f:
 			pickle.dump(self, f)
-			print(self.center)
 
 	def fill(self, n,m):
 		view_center = divVector(subVector(CENTER_CONST, self.center), (SCALE,SCALE))
-		print(view_center)
 		for i in range(n):
-			print(view_center)
-			print(int(view_center[0]-CENTER_CONST[0]),int(view_center[0]+CENTER_CONST[0]))
-			print(int(view_center[1]-CENTER_CONST[1]),int(view_center[1]+CENTER_CONST[1]))
 			x = random.randint(int(-CENTER_CONST[0]//SCALE),int(CENTER_CONST[0]//SCALE))
 			y = random.randint(int(-CENTER_CONST[1]//SCALE),int(CENTER_CONST[1]//SCALE))
 			mass = random.randint(10, m)
